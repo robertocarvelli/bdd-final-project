@@ -31,6 +31,7 @@ from selenium.webdriver.support.ui import Select, WebDriverWait
 from selenium.webdriver.support import expected_conditions
 
 ID_PREFIX = 'product_'
+BTN_SUFFIX = '-btn'
 
 
 @when('I visit the "Home Page"')
@@ -104,7 +105,41 @@ def step_impl(context, element_name):
 # to get the element id of any button
 ##################################################################
 
-## UPDATE CODE HERE ##
+
+@when(u'I press the "{button}" button')
+def step_impl(context, button):
+    element_id = button.lower().replace(' ', '_') + BTN_SUFFIX
+    element = WebDriverWait(context.driver, context.wait_seconds).until(
+        expected_conditions.presence_of_element_located((By.ID, element_id))
+    )
+    element.click()
+
+@then(u'I should see the message "{message}"')
+def step_impl(context, message):
+    found = WebDriverWait(context.driver, context.wait_seconds).until(
+        expected_conditions.text_to_be_present_in_element(
+            (By.ID, 'flash_message'),
+            message
+        )
+    )
+    assert(found)
+
+@then(u'I should see "{product_name}" in the results')
+def step_impl(context, product_name):
+    found = WebDriverWait(context.driver, context.wait_seconds).until(
+        expected_conditions.text_to_be_present_in_element(
+            (By.ID, 'search_results'),
+            product_name
+        )
+    )
+    assert(found)
+
+@then(u'I should not see "{product_name}" in the results')
+def step_impl(context, product_name):
+    element = WebDriverWait(context.driver, context.wait_seconds).until(
+        expected_conditions.presence_of_element_located((By.ID, "search_results"))
+    )
+    assert(product_name not in element.text)
 
 ##################################################################
 # This code works because of the following naming convention:
