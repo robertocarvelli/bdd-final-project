@@ -27,7 +27,7 @@ import os
 import logging
 import unittest
 from decimal import Decimal
-from service.models import Product, Category, db
+from service.models import Product, Category, db, DataValidationError
 from service import app
 from tests.factories import ProductFactory
 
@@ -130,6 +130,15 @@ class TestProductModel(unittest.TestCase):
         self.assertEqual(products[0].id, original_id)
         self.assertEqual(products[0].description, "updated description")
 
+    def test_update_product_fails_when_id_is_not_present(self):
+        """Product update should fail when id is not present"""
+        product = ProductFactory()
+        product.id = None
+        product.create()
+        product.description = "updated description"
+        product.id = None
+        self.assertRaises(DataValidationError, product.update)
+
     def test_delete_a_product(self):
         """It should Delete a Product"""
         product = ProductFactory()
@@ -137,6 +146,26 @@ class TestProductModel(unittest.TestCase):
         self.assertEqual(len(Product.all()), 1)
         product.delete()
         self.assertEqual(len(Product.all()), 0)
+
+    def test_deserilize_product_fails_when_available_is_invalid(self):
+        """Deserialize fails when "availble" is invalid"""
+        product = ProductFactory()
+        serialized = product.serialize()
+        serialized["available"] = "some_string"
+        self.assertRaises(DataValidationError, product.deserialize, serialized)
+
+    def test_deserilize_product_fails_when_category_is_invalid(self):
+        """Deserialize fails when "availble" is invalid"""
+        product = ProductFactory()
+        serialized = product.serialize()
+        serialized["category"] = "some_string"
+        self.assertRaises(DataValidationError, product.deserialize, serialized)
+
+    def test_deserilize_product_fails_when_invalid_dict_is_passed(self):
+        """Deserialize fails when invalid dict is passed"""
+        product = ProductFactory()
+        self.assertRaises(DataValidationError, product.deserialize, None)
+        self.assertRaises(DataValidationError, product.deserialize, {})
 
     def test_list_all_products(self):
         """It should List all Products in the database"""
@@ -184,3 +213,33 @@ class TestProductModel(unittest.TestCase):
         self.assertEqual(found.count(), count)
         for product in found:
             self.assertEqual(product.category, category)
+
+    def test_find_by_price(self):
+        """It should Find Products by Price"""
+        products = ProductFactory.create_batch(10)
+        price = Decimal(3000.1)
+        for product in products:
+            product.create()
+        for i in range(4):
+            products[i].price = price
+            products[i].update()
+        count = len([product for product in products if product.price == price])
+        found = Product.find_by_price(price)
+        self.assertEqual(found.count(), count)
+        for product in found:
+            self.assertEqual(product.price, price)
+
+    def test_find_by_price_with_string(self):
+        """It should Find Products by Price when the passed value is a string"""
+        products = ProductFactory.create_batch(10)
+        price = Decimal(3000.1)
+        for product in products:
+            product.create()
+        for i in range(4):
+            products[i].price = price
+            products[i].update()
+        count = len([product for product in products if product.price == price])
+        found = Product.find_by_price(str(price))
+        self.assertEqual(found.count(), count)
+        for product in found:
+            self.assertEqual(product.price, price)
