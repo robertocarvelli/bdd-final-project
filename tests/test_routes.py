@@ -165,7 +165,6 @@ class TestProductRoutes(TestCase):
 
     def test_get_product(self):
         """It should Get a single Product"""
-        # get the id of a product
         test_product = self._create_products(1)[0]
         response = self.client.get(f"{BASE_URL}/{test_product.id}")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -173,11 +172,47 @@ class TestProductRoutes(TestCase):
         self.assertEqual(data["name"], test_product.name)
 
     def test_get_product_not_found(self):
-        """It should not Get a Product thats not found"""
+        """It should not Get a Product that's not found"""
         response = self.client.get(f"{BASE_URL}/0")
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
         data = response.get_json()
         self.assertIn("was not found", data["message"])
+
+    def test_update_product(self):
+        """It should Update a Product"""
+        test_product = self._create_products(1)[0]
+        test_product.name = "update product name"
+        test_product.price = 314.15
+        response = self.client.put(f"{BASE_URL}/{test_product.id}", json=test_product.serialize())
+        self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
+        response = self.client.get(f"{BASE_URL}/{test_product.id}")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.get_json()
+        self.assertEqual(data["name"], "update product name")
+        self.assertEqual(data["price"], str(314.15))
+
+    def test_update_product_not_found(self):
+        """It should not Get a Product that's not found"""
+        test_product = self._create_products(1)[0]
+        json = test_product.serialize()
+        response = self.client.put(f"{BASE_URL}/0", json=json)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_update_with_missing_product(self):
+        """It should Not Update a Product when a field is missing"""
+        test_product = self._create_products(1)[0]
+        json = test_product.serialize()
+        del json["available"]
+        response = self.client.put(f"{BASE_URL}/{test_product.id}", json=json)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_update_with_invalid_field(self):
+        """It should Not Update a Product when a passed field is invalid"""
+        test_product = self._create_products(1)[0]
+        json = test_product.serialize()
+        json["price"] = "Hello World"
+        response = self.client.put(f"{BASE_URL}/{test_product.id}", json=json)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     ######################################################################
     # Utility functions
